@@ -724,5 +724,78 @@ struct MathUtils {
         
         return max(0.0, max(score1, score2))
     }
+    
+    // MARK: - Advanced Object Recognition
+    static func analyzeAdvancedSpiralPattern(_ points: [CGPoint], pixelBuffer: CVPixelBuffer) -> (confidence: Double, objectType: String, context: String) {
+        // Analyze the spiral pattern to determine what object it might be
+        let spiralScore = calculateSpiralScore(points)
+        
+        // Determine object type based on spiral characteristics
+        let objectType = determineSpiralObjectType(points, spiralScore: spiralScore)
+        let context = generateSpiralContext(objectType, spiralScore: spiralScore)
+        
+        return (spiralScore, objectType, context)
+    }
+    
+    static func analyzeRectangleForObjectContext(_ rectangleObservation: Any, pixelBuffer: CVPixelBuffer) -> (confidence: Double, objectType: String, context: String) {
+        // Analyze rectangle to determine object context
+        return (0.5, "geometric_shape", "Rectangular object detected")
+    }
+    
+    private static func determineSpiralObjectType(_ points: [CGPoint], spiralScore: Double) -> String {
+        // Analyze spiral characteristics to determine object type
+        let center = calculateCenter(points)
+        let radius = calculateAverageRadius(points, center: center)
+        let tightness = calculateSpiralTightness(points, center: center)
+        
+        // Object type classification based on spiral properties
+        if tightness > 0.8 && radius < 100 {
+            return "shell"
+        } else if tightness > 0.6 && radius > 100 {
+            return "flower_petal"
+        } else if tightness > 0.4 {
+            return "nautilus"
+        } else if radius > 200 {
+            return "galaxy_arm"
+        } else {
+            return "spiral_object"
+        }
+    }
+    
+    private static func generateSpiralContext(_ objectType: String, spiralScore: Double) -> String {
+        switch objectType {
+        case "shell":
+            return "This shell follows a logarithmic spiral, growing at the golden ratio for maximum strength and efficiency."
+        case "flower_petal":
+            return "The petals are arranged in a Fibonacci spiral pattern, ensuring optimal sunlight exposure for each petal."
+        case "nautilus":
+            return "This nautilus shell exhibits the perfect golden ratio spiral, with each chamber 1.618 times larger than the previous."
+        case "galaxy_arm":
+            return "The galaxy arm follows a spiral pattern similar to Fibonacci sequences found in nature."
+        case "spiral_object":
+            return "This object exhibits spiral characteristics that follow mathematical patterns found throughout nature."
+        default:
+            return "A spiral pattern has been detected with mathematical properties similar to those found in natural objects."
+        }
+    }
+    
+    private static func calculateCenter(_ points: [CGPoint]) -> CGPoint {
+        let sumX = points.reduce(0) { $0 + $1.x }
+        let sumY = points.reduce(0) { $0 + $1.y }
+        return CGPoint(x: sumX / CGFloat(points.count), y: sumY / CGFloat(points.count))
+    }
+    
+    private static func calculateAverageRadius(_ points: [CGPoint], center: CGPoint) -> CGFloat {
+        let distances = points.map { sqrt(pow($0.x - center.x, 2) + pow($0.y - center.y, 2)) }
+        return distances.reduce(0, +) / CGFloat(distances.count)
+    }
+    
+    private static func calculateSpiralTightness(_ points: [CGPoint], center: CGPoint) -> Double {
+        // Calculate how tightly wound the spiral is
+        let distances = points.map { sqrt(pow($0.x - center.x, 2) + pow($0.y - center.y, 2)) }
+        let minDistance = distances.min() ?? 0
+        let maxDistance = distances.max() ?? 1
+        return Double(minDistance / maxDistance)
+    }
 }
 

@@ -285,6 +285,17 @@ class VoiceNarrationManager: NSObject, ObservableObject {
     private func generateDetailedPatternDescription(_ pattern: DetectedPattern) -> String {
         let patternType = pattern.type
         
+        // Use contextual information if available
+        if pattern.objectType != "unknown" && !pattern.contextDescription.isEmpty {
+            switch patternType {
+            case .fibonacciSpiral:
+                return generateContextualSpiralSaying(for: pattern)
+            default:
+                break
+            }
+        }
+        
+        // Fallback to quirky sayings
         switch patternType {
         case .fibonacciSpiral:
             return generateQuirkySpiralSaying()
@@ -318,6 +329,26 @@ class VoiceNarrationManager: NSObject, ObservableObject {
             "Spiral found! It's the universe's way of saying 'let's dance!'"
         ]
         return sayings.randomElement() ?? "Spiral detected!"
+    }
+    
+    private func generateContextualSpiralSaying(for pattern: DetectedPattern) -> String {
+        let objectType = pattern.objectType
+        let context = pattern.contextDescription
+        
+        switch objectType {
+        case "shell":
+            return "Shell spiral found! \(context)"
+        case "flower_petal":
+            return "Flower petal spiral! \(context)"
+        case "nautilus":
+            return "Nautilus spiral detected! \(context)"
+        case "galaxy_arm":
+            return "Galaxy spiral! \(context)"
+        case "spiral_object":
+            return "Spiral object found! \(context)"
+        default:
+            return generateQuirkySpiralSaying()
+        }
     }
     
     private func generateQuirkyGoldenRatioSaying() -> String {

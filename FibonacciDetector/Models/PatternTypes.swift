@@ -82,6 +82,10 @@ struct DetectedPattern: Identifiable {
     let mathematicalProperties: MathematicalProperties
     let educationalContent: EducationalContent
     
+    // Object context properties for advanced detection
+    var objectType: String = "unknown"
+    var contextDescription: String = "No context available"
+    
     struct MathematicalProperties {
         let phiValue: Double?
         let fibonacciNumbers: [Int]?

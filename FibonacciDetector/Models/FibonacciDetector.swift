@@ -123,7 +123,7 @@ class FibonacciDetector: ObservableObject {
         
         // Filter and sort patterns by confidence, then remove overlapping detections
         let filteredPatterns = newPatterns
-            .filter { $0.confidence >= 0.4 } // Lower confidence threshold for better detection
+            .filter { $0.confidence >= 0.8 } // Much stricter threshold to reduce false positives
             .sorted { $0.confidence > $1.confidence }
             .removeOverlappingPatterns()
         
@@ -227,92 +227,104 @@ class FibonacciDetector: ObservableObject {
     }
     
     private func detectFibonacciSpiral(_ pixelBuffer: CVPixelBuffer) -> DetectedPattern? {
-        // Enhanced Fibonacci spiral detection using image analysis
+        // Advanced Fibonacci spiral detection with object recognition
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
         
-        // Analyze image for spiral patterns
-        // This is a simplified version - in production you'd use more sophisticated algorithms
-        let hasSpiralPattern = analyzeImageForSpiralPattern(pixelBuffer)
+        // Analyze image for spiral patterns with object context
+        let spiralAnalysis = analyzeImageForSpiralPattern(pixelBuffer)
         
-        if hasSpiralPattern {
-            let confidence: Float = 0.75
+        if spiralAnalysis.isSpiral {
+            let confidence: Float = Float(spiralAnalysis.confidence)
             let boundingBox = CGRect(x: width/4, y: height/4, width: width/2, height: height/2)
             
-            return createDetectedPattern(
+            var pattern = createDetectedPattern(
                 type: .fibonacciSpiral,
                 confidence: confidence,
                 boundingBox: boundingBox
             )
+            
+            // Add object context to the pattern
+            pattern.objectType = spiralAnalysis.objectType
+            pattern.contextDescription = spiralAnalysis.context
+            
+            return pattern
         }
         
         return nil
     }
     
-    private func analyzeImageForSpiralPattern(_ pixelBuffer: CVPixelBuffer) -> Bool {
-        // Enhanced multi-algorithm spiral detection
+    private func analyzeImageForSpiralPattern(_ pixelBuffer: CVPixelBuffer) -> (isSpiral: Bool, confidence: Double, objectType: String, context: String) {
         let requestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         
-        // Algorithm 1: Contour-based spiral detection
+        // Multiple detection requests for comprehensive analysis
         let contourRequest = VNDetectContoursRequest()
         contourRequest.detectsDarkOnLight = true
         contourRequest.contrastAdjustment = 1.0
         
-        // Algorithm 2: Edge detection for spiral patterns
-        let edgeRequest = VNDetectContoursRequest()
-        edgeRequest.detectsDarkOnLight = true
-        edgeRequest.contrastAdjustment = 1.0
+        let rectangleRequest = VNDetectRectanglesRequest()
+        rectangleRequest.maximumObservations = 10
+        rectangleRequest.minimumAspectRatio = 0.1
+        rectangleRequest.maximumAspectRatio = 10.0
         
-        // Algorithm 3: Circle detection for spiral centers (using rectangle detection as fallback)
-        let circleRequest = VNDetectRectanglesRequest()
-        circleRequest.maximumObservations = 5
-        circleRequest.minimumAspectRatio = 0.8
-        circleRequest.maximumAspectRatio = 1.2
+        let textRequest = VNDetectTextRectanglesRequest()
+        textRequest.reportCharacterBoxes = false
         
         do {
-            try requestHandler.perform([contourRequest, edgeRequest, circleRequest])
+            try requestHandler.perform([contourRequest, rectangleRequest, textRequest])
             
-            var spiralScore: Double = 0.0
+            var bestSpiralScore: Double = 0.0
+            var detectedObjectType = "unknown"
+            var contextDescription = "No clear object detected"
             
-            // Analyze contours for spiral characteristics
+            // Analyze contours for spiral patterns
             if let contourObservations = contourRequest.results {
                 for observation in contourObservations {
                     let contours = observation.topLevelContours
                     for contour in contours {
                         let points = contour.normalizedPoints.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
-                        
-                        if points.count > 20 {
-                            let contourSpiralScore = MathUtils.calculateSpiralScore(points)
-                            spiralScore = max(spiralScore, contourSpiralScore)
+                        if points.count > 30 { // Require more points for reliability
+                            let spiralAnalysis = MathUtils.analyzeAdvancedSpiralPattern(points, pixelBuffer: pixelBuffer)
+                            if spiralAnalysis.confidence > bestSpiralScore {
+                                bestSpiralScore = spiralAnalysis.confidence
+                                detectedObjectType = spiralAnalysis.objectType
+                                contextDescription = spiralAnalysis.context
+                            }
                         }
                     }
                 }
             }
             
-            // Analyze edges for logarithmic spiral patterns (using contour results)
-            if let edgeObservations = edgeRequest.results {
-                for observation in edgeObservations {
-                    let edgeSpiralScore = MathUtils.analyzeEdgesForSpiralPattern(observation)
-                    spiralScore = max(spiralScore, edgeSpiralScore)
-                }
-            }
-            
-            // Analyze rectangles for spiral center points (using rectangle detection as circle fallback)
-            if let rectangleObservations = circleRequest.results {
+            // Analyze rectangles for object context
+            if let rectangleObservations = rectangleRequest.results {
                 for observation in rectangleObservations {
-                    let circleSpiralScore = MathUtils.analyzeCirclesForSpiralPattern(observation, pixelBuffer: pixelBuffer)
-                    spiralScore = max(spiralScore, circleSpiralScore)
+                    let rectAnalysis = MathUtils.analyzeRectangleForObjectContext(observation, pixelBuffer: pixelBuffer)
+                    if rectAnalysis.confidence > 0.3 {
+                        // Use rectangle context to validate spiral detection
+                        if bestSpiralScore > 0.4 {
+                            contextDescription = rectAnalysis.context
+                            detectedObjectType = rectAnalysis.objectType
+                        }
+                    }
                 }
             }
             
-            // Enhanced threshold with multiple algorithm consensus
-            return spiralScore > 0.65
+            // Check for text that might indicate false positives
+            if let textObservations = textRequest.results, !textObservations.isEmpty {
+                // If we detect text, be more conservative about spiral detection
+                bestSpiralScore *= 0.7
+            }
+            
+            // Much stricter threshold to reduce false positives
+            let isSpiral = bestSpiralScore > 0.8 && detectedObjectType != "unknown"
+            
+            return (isSpiral, bestSpiralScore, detectedObjectType, contextDescription)
             
         } catch {
-            print("❌ Enhanced spiral detection failed: \(error)")
+            print("❌ Advanced spiral detection failed: \(error)")
         }
         
-        return false
+        return (false, 0.0, "unknown", "Detection failed")
     }
     
     private func detectGoldenRatio(_ pixelBuffer: CVPixelBuffer) -> DetectedPattern? {
