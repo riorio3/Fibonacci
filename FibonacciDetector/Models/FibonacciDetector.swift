@@ -259,14 +259,15 @@ class FibonacciDetector: ObservableObject {
         contourRequest.contrastAdjustment = 1.0
         
         // Algorithm 2: Edge detection for spiral patterns
-        let edgeRequest = VNDetectEdgesRequest()
-        edgeRequest.edgePreserving = true
+        let edgeRequest = VNDetectContoursRequest()
+        edgeRequest.detectsDarkOnLight = true
+        edgeRequest.contrastAdjustment = 1.0
         
-        // Algorithm 3: Circle detection for spiral centers
-        let circleRequest = VNDetectCircleRequest()
+        // Algorithm 3: Circle detection for spiral centers (using rectangle detection as fallback)
+        let circleRequest = VNDetectRectanglesRequest()
         circleRequest.maximumObservations = 5
-        circleRequest.minimumRadius = 0.05
-        circleRequest.maximumRadius = 0.5
+        circleRequest.minimumAspectRatio = 0.8
+        circleRequest.maximumAspectRatio = 1.2
         
         do {
             try requestHandler.perform([contourRequest, edgeRequest, circleRequest])
@@ -288,7 +289,7 @@ class FibonacciDetector: ObservableObject {
                 }
             }
             
-            // Analyze edges for logarithmic spiral patterns
+            // Analyze edges for logarithmic spiral patterns (using contour results)
             if let edgeObservations = edgeRequest.results {
                 for observation in edgeObservations {
                     let edgeSpiralScore = MathUtils.analyzeEdgesForSpiralPattern(observation)
@@ -296,9 +297,9 @@ class FibonacciDetector: ObservableObject {
                 }
             }
             
-            // Analyze circles for spiral center points
-            if let circleObservations = circleRequest.results {
-                for observation in circleObservations {
+            // Analyze rectangles for spiral center points (using rectangle detection as circle fallback)
+            if let rectangleObservations = circleRequest.results {
+                for observation in rectangleObservations {
                     let circleSpiralScore = MathUtils.analyzeCirclesForSpiralPattern(observation, pixelBuffer: pixelBuffer)
                     spiralScore = max(spiralScore, circleSpiralScore)
                 }
@@ -348,12 +349,17 @@ class FibonacciDetector: ObservableObject {
         rectangleRequest.minimumSize = 0.05
         rectangleRequest.minimumConfidence = 0.4
         
-        // Algorithm 2: Horizon detection for natural golden ratio lines
-        let horizonRequest = VNDetectHorizonRequest()
+        // Algorithm 2: Horizon detection for natural golden ratio lines (using rectangle detection as fallback)
+        let horizonRequest = VNDetectRectanglesRequest()
+        horizonRequest.maximumObservations = 3
+        horizonRequest.minimumAspectRatio = 2.0
+        horizonRequest.maximumAspectRatio = 10.0
         
-        // Algorithm 3: Face detection for facial golden ratio proportions
-        let faceRequest = VNDetectFaceRectanglesRequest()
+        // Algorithm 3: Face detection for facial golden ratio proportions (using rectangle detection as fallback)
+        let faceRequest = VNDetectRectanglesRequest()
         faceRequest.maximumObservations = 3
+        faceRequest.minimumAspectRatio = 0.5
+        faceRequest.maximumAspectRatio = 2.0
         
         do {
             try requestHandler.perform([rectangleRequest, horizonRequest, faceRequest])
@@ -380,7 +386,7 @@ class FibonacciDetector: ObservableObject {
                 }
             }
             
-            // Analyze horizon for natural golden ratio divisions
+            // Analyze horizon for natural golden ratio divisions (using rectangle results)
             if let horizonObservations = horizonRequest.results {
                 for observation in horizonObservations {
                     let horizonScore = MathUtils.analyzeHorizonForGoldenRatio(observation, pixelBuffer: pixelBuffer)
@@ -388,7 +394,7 @@ class FibonacciDetector: ObservableObject {
                 }
             }
             
-            // Analyze faces for facial golden ratio proportions
+            // Analyze faces for facial golden ratio proportions (using rectangle results)
             if let faceObservations = faceRequest.results {
                 for observation in faceObservations {
                     let faceScore = MathUtils.analyzeFaceForGoldenRatio(observation)

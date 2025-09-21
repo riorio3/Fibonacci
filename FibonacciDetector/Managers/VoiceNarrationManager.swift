@@ -243,39 +243,39 @@ class VoiceNarrationManager: NSObject, ObservableObject {
     }
     
     private func generateSpiralDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Fibonacci spiral detected. \(confidence)% confidence."
+        return "Spiral detected!"
     }
     
     private func generateGoldenRatioDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Golden ratio detected. \(confidence)% confidence."
+        return "You found the golden ratio!"
     }
     
     private func generateSequenceDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Fibonacci sequence detected. \(confidence)% confidence."
+        return "Fibonacci sequence found!"
     }
     
     private func generatePhiGridDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Phi grid detected. \(confidence)% confidence."
+        return "Phi grid detected!"
     }
     
     private func generateSunflowerDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Sunflower spiral detected. \(confidence)% confidence."
+        return "Sunflower spiral found!"
     }
     
     private func generatePineconeDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Pinecone spiral detected. \(confidence)% confidence."
+        return "Pinecone spiral detected!"
     }
     
     private func generateShellDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Shell spiral detected. \(confidence)% confidence."
+        return "Shell spiral found!"
     }
     
     private func generateNautilusDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Nautilus spiral detected. \(confidence)% confidence."
+        return "Nautilus spiral detected!"
     }
     
     private func generateLeafDescription(_ pattern: DetectedPattern, confidence: Int) -> String {
-        return "Leaf arrangement detected. \(confidence)% confidence."
+        return "Leaf arrangement found!"
     }
     
     private func generateDetailedExplanation(_ pattern: DetectedPattern) -> String {
@@ -283,29 +283,137 @@ class VoiceNarrationManager: NSObject, ObservableObject {
     }
     
     private func generateDetailedPatternDescription(_ pattern: DetectedPattern) -> String {
-        let confidence = Int(pattern.confidence * 100)
         let patternType = pattern.type
         
         switch patternType {
         case .fibonacciSpiral:
-            return "This is a beautiful Fibonacci spiral, found in nature's most elegant designs. The spiral grows at the golden ratio of 1.618, creating perfect mathematical harmony. You can see this same pattern in nautilus shells and galaxy arms."
+            return generateQuirkySpiralSaying()
         case .goldenRatio:
-            return "You've found the golden ratio! This divine proportion of 1.618 appears throughout nature and art. It's considered the most aesthetically pleasing ratio, found in everything from flower petals to architectural masterpieces."
+            return generateQuirkyGoldenRatioSaying()
         case .fibonacciSequence:
-            return "A Fibonacci sequence pattern! Each number is the sum of the two before it: 1, 1, 2, 3, 5, 8, 13. This sequence appears in flower petal counts, pinecone spirals, and even the branching of trees."
+            return generateQuirkySequenceSaying()
         case .phiGrid:
-            return "This is a phi grid pattern, based on the golden ratio. It creates perfect proportions that our eyes find naturally beautiful, used by artists and architects for centuries."
+            return generateQuirkyPhiGridSaying()
         case .sunflowerSpiral:
-            return "A sunflower spiral! The seeds are arranged in perfect Fibonacci spirals, maximizing space efficiency. This mathematical pattern ensures every seed gets optimal sunlight and space."
+            return generateQuirkySunflowerSaying()
         case .pineconeSpiral:
-            return "Pinecone spiral detected! The scales follow Fibonacci spirals, creating the most efficient packing arrangement. Nature's engineering at its finest."
+            return generateQuirkyPineconeSaying()
         case .shellSpiral:
-            return "A shell spiral pattern! This logarithmic spiral grows at the golden ratio, creating the perfect balance of strength and beauty found in nautilus shells."
+            return generateQuirkyShellSaying()
         case .nautilusSpiral:
-            return "The classic nautilus spiral! This perfect logarithmic spiral grows at exactly the golden ratio, creating one of nature's most beautiful mathematical patterns."
+            return generateQuirkyNautilusSaying()
         case .leafArrangement:
-            return "Leaf arrangement following Fibonacci patterns! Plants use this mathematical sequence to ensure optimal sunlight exposure for each leaf, maximizing photosynthesis efficiency."
+            return generateQuirkyLeafSaying()
         }
+    }
+    
+    // MARK: - Quirky Pattern Sayings
+    private func generateQuirkySpiralSaying() -> String {
+        let sayings = [
+            "Spiral detected! Nature's way of saying 'let's get twisty!'",
+            "Fibonacci spiral found! It's like nature's own corkscrew.",
+            "Spiral alert! This is how the universe does a twirl.",
+            "Spiral spotted! Even math can be a little dizzy sometimes.",
+            "Spiral detected! Nature's original spiral staircase.",
+            "Spiral found! It's the universe's way of saying 'let's dance!'"
+        ]
+        return sayings.randomElement() ?? "Spiral detected!"
+    }
+    
+    private func generateQuirkyGoldenRatioSaying() -> String {
+        let sayings = [
+            "You found the golden ratio! Nature's favorite number.",
+            "Golden ratio detected! It's like finding mathematical gold.",
+            "You found the golden ratio! Even math has its golden moments.",
+            "Golden ratio spotted! Nature's way of saying 'just right!'",
+            "You found the golden ratio! The universe's perfect proportion.",
+            "Golden ratio detected! It's the math equivalent of a perfect sunset."
+        ]
+        return sayings.randomElement() ?? "You found the golden ratio!"
+    }
+    
+    private func generateQuirkySequenceSaying() -> String {
+        let sayings = [
+            "Fibonacci sequence found! Math that actually makes sense.",
+            "Sequence detected! Nature's counting system in action.",
+            "Fibonacci sequence spotted! It's like nature's own calculator.",
+            "Sequence found! Even numbers can be beautiful.",
+            "Fibonacci sequence detected! Nature's way of counting to infinity.",
+            "Sequence spotted! It's the universe's favorite number pattern."
+        ]
+        return sayings.randomElement() ?? "Fibonacci sequence detected!"
+    }
+    
+    private func generateQuirkyPhiGridSaying() -> String {
+        let sayings = [
+            "Phi grid detected! Nature's own grid system.",
+            "Grid pattern found! Even nature needs organization.",
+            "Phi grid spotted! It's like nature's own graph paper.",
+            "Grid detected! The universe's way of staying organized.",
+            "Phi grid found! Nature's perfect planning system.",
+            "Grid pattern spotted! Even math likes to stay in line."
+        ]
+        return sayings.randomElement() ?? "Phi grid detected!"
+    }
+    
+    private func generateQuirkySunflowerSaying() -> String {
+        let sayings = [
+            "Sunflower spiral found! Nature's own sunflower power.",
+            "Sunflower pattern detected! It's like a mathematical flower.",
+            "Sunflower spiral spotted! Nature's way of saying 'sunny side up!'",
+            "Sunflower pattern found! Even flowers can do math.",
+            "Sunflower spiral detected! Nature's original sunflower seeds.",
+            "Sunflower pattern spotted! It's the universe's way of blooming."
+        ]
+        return sayings.randomElement() ?? "Sunflower spiral detected!"
+    }
+    
+    private func generateQuirkyPineconeSaying() -> String {
+        let sayings = [
+            "Pinecone spiral found! Nature's own pine cone power.",
+            "Pinecone pattern detected! It's like a mathematical pine tree.",
+            "Pinecone spiral spotted! Nature's way of saying 'pine fresh!'",
+            "Pinecone pattern found! Even pine trees can do math.",
+            "Pinecone spiral detected! Nature's original pine cone seeds.",
+            "Pinecone pattern spotted! It's the universe's way of growing."
+        ]
+        return sayings.randomElement() ?? "Pinecone spiral detected!"
+    }
+    
+    private func generateQuirkyShellSaying() -> String {
+        let sayings = [
+            "Shell spiral found! Nature's own shell game.",
+            "Shell pattern detected! It's like a mathematical seashell.",
+            "Shell spiral spotted! Nature's way of saying 'shell yeah!'",
+            "Shell pattern found! Even seashells can do math.",
+            "Shell spiral detected! Nature's original shell collection.",
+            "Shell pattern spotted! It's the universe's way of shelling out."
+        ]
+        return sayings.randomElement() ?? "Shell spiral detected!"
+    }
+    
+    private func generateQuirkyNautilusSaying() -> String {
+        let sayings = [
+            "Nautilus spiral found! Nature's own nautilus power.",
+            "Nautilus pattern detected! It's like a mathematical nautilus.",
+            "Nautilus spiral spotted! Nature's way of saying 'nautilus up!'",
+            "Nautilus pattern found! Even nautiluses can do math.",
+            "Nautilus spiral detected! Nature's original nautilus shell.",
+            "Nautilus pattern spotted! It's the universe's way of nautilusing."
+        ]
+        return sayings.randomElement() ?? "Nautilus spiral detected!"
+    }
+    
+    private func generateQuirkyLeafSaying() -> String {
+        let sayings = [
+            "Leaf arrangement found! Nature's own leaf system.",
+            "Leaf pattern detected! It's like a mathematical leaf.",
+            "Leaf arrangement spotted! Nature's way of saying 'leaf it to me!'",
+            "Leaf pattern found! Even leaves can do math.",
+            "Leaf arrangement detected! Nature's original leaf collection.",
+            "Leaf pattern spotted! It's the universe's way of leafing out."
+        ]
+        return sayings.randomElement() ?? "Leaf arrangement detected!"
     }
     
 }
