@@ -44,6 +44,18 @@ struct ContentView: View {
         }
         .onDisappear {
             arKitManager.stopSession()
+            fibonacciDetector.cleanupMemory()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            // Clean up memory when app goes to background
+            fibonacciDetector.cleanupMemory()
+            arKitManager.cleanupMemory()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            // Restart session when app comes to foreground
+            if !arKitManager.isSessionRunning {
+                arKitManager.startSession()
+            }
         }
     }
 }

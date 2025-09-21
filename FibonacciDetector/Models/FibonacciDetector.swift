@@ -33,7 +33,7 @@ class FibonacciDetector: ObservableObject {
     // MARK: - Constants
     private let goldenRatio: Double = 1.618033988749895
     private let phi: Double = 1.618033988749895
-    private let processingInterval: TimeInterval = 0.5 // 2 FPS processing for better stability
+    private let processingInterval: TimeInterval = 1.0 // 1 FPS processing to reduce memory pressure
     
     init() {
         setupMLModel()
@@ -626,6 +626,23 @@ class FibonacciDetector: ObservableObject {
     func clearDetections() {
         detectedPatterns.removeAll()
         voiceNarrationManager?.clearLastSpoken()
+    }
+    
+    func cleanupMemory() {
+        // Clear all pattern data
+        detectedPatterns.removeAll()
+        stablePatterns.removeAll()
+        patternHistory.removeAll()
+        
+        // Clear voice narration state
+        voiceNarrationManager?.clearLastSpoken()
+        
+        // Reset processing state
+        isProcessing = false
+        frameCount = 0
+        lastProcessingTime = Date()
+        
+        print("🧹 FibonacciDetector memory cleaned up")
     }
     
     func updateSettings(_ newSettings: DetectionSettings) {

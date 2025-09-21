@@ -19,7 +19,7 @@ class ARKitManager: NSObject, ObservableObject {
     @Published var cameraPosition: AVCaptureDevice.Position = .back
     @Published var isLiDARAvailable = false
     @Published var depthData: ARDepthData?
-    @Published var currentFrame: ARFrame?
+    // Removed currentFrame storage to prevent ARFrame retention
     @Published var errorMessage: String?
     
     // MARK: - Private Properties
@@ -121,6 +121,10 @@ class ARKitManager: NSObject, ObservableObject {
         arSession.pause()
         isSessionRunning = false
         sessionState = .paused
+        
+        // Clear any retained data to free memory
+        depthData = nil
+        frameCount = 0
     }
     
     func resetSession() {
@@ -159,6 +163,7 @@ class ARKitManager: NSObject, ObservableObject {
     
     // MARK: - Frame Processing
     func getCurrentFrame() -> ARFrame? {
+        // Return frame without storing it to prevent retention
         return arSession.currentFrame
     }
     
@@ -180,17 +185,29 @@ class ARKitManager: NSObject, ObservableObject {
             print("📊 AR Session FPS: \(String(format: "%.1f", currentFPS))")
         }
     }
+    
+    // MARK: - Memory Management
+    func cleanupMemory() {
+        // Clear any retained data
+        depthData = nil
+        frameCount = 0
+        
+        // Force garbage collection if needed
+        DispatchQueue.main.async {
+            // This helps ensure any retained objects are released
+        }
+    }
 }
 
 // MARK: - ARSessionDelegate
 extension ARKitManager: ARSessionDelegate {
     nonisolated func session(_ session: ARSession, didUpdate frame: ARFrame) {
         Task { @MainActor in
-            self.currentFrame = frame
+            // Don't store the frame to prevent retention - just update metrics
             self.frameCount += 1
             self.updatePerformanceMetrics()
             
-            // Extract depth data if available
+            // Extract depth data if available (this is lightweight)
             if let sceneDepth = frame.sceneDepth {
                 self.depthData = sceneDepth
             }

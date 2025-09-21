@@ -136,7 +136,7 @@ struct ARCameraView: UIViewRepresentable {
     class Coordinator: NSObject, ARSCNViewDelegate {
         var parent: ARCameraView
         private var lastFrameTime = Date()
-        private let processingInterval: TimeInterval = 0.5 // 2 FPS processing for better stability
+        private let processingInterval: TimeInterval = 1.0 // 1 FPS processing to reduce memory pressure
         
         init(_ parent: ARCameraView) {
             self.parent = parent
@@ -152,7 +152,7 @@ struct ARCameraView: UIViewRepresentable {
             
             // Process frame for Fibonacci patterns
             Task { @MainActor in
-                guard let frame = parent.arKitManager.currentFrame else { return }
+                guard let frame = parent.arKitManager.getCurrentFrame() else { return }
                 parent.fibonacciDetector.processFrame(
                     frame.capturedImage,
                     depthData: parent.arKitManager.depthData
