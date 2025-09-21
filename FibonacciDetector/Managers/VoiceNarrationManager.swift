@@ -16,18 +16,32 @@ class VoiceNarrationManager: NSObject, ObservableObject {
     private var speechTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     
+    // Spatial awareness and smart repetition prevention
+    private var spokenPatterns: [String: Date] = [:] // Track what was spoken and when
+    private var lastSpokenLocation: CGPoint? = nil
+    private let spatialThreshold: CGFloat = 100.0 // Minimum distance between spoken patterns
+    private let timeThreshold: TimeInterval = 10.0 // Minimum time between same pattern types
+    
     // MARK: - Voice Settings
     private let voice: AVSpeechSynthesisVoice
-    private let minimumIntervalBetweenSpeeches: TimeInterval = 3.0 // Prevent spam
+    private let minimumIntervalBetweenSpeeches: TimeInterval = 5.0 // Prevent spam - increased for better UX
     
     override init() {
-        // Try to find an Australian female voice, fallback to any Australian voice
-        if let australianFemaleVoice = AVSpeechSynthesisVoice.speechVoices().first(where: { 
+        // Try to find the most natural-sounding voice available
+        if let enhancedVoice = AVSpeechSynthesisVoice.speechVoices().first(where: { 
+            $0.name.contains("Enhanced") || $0.name.contains("Premium") || $0.name.contains("Neural")
+        }) {
+            self.voice = enhancedVoice
+        } else if let australianFemaleVoice = AVSpeechSynthesisVoice.speechVoices().first(where: { 
             $0.language.hasPrefix("en-AU") && $0.gender == .female 
         }) {
             self.voice = australianFemaleVoice
         } else if let australianVoice = AVSpeechSynthesisVoice(language: "en-AU") {
             self.voice = australianVoice
+        } else if let usFemaleVoice = AVSpeechSynthesisVoice.speechVoices().first(where: { 
+            $0.language.hasPrefix("en-US") && $0.gender == .female 
+        }) {
+            self.voice = usFemaleVoice
         } else {
             // Fallback to any available voice
             self.voice = AVSpeechSynthesisVoice(language: "en-US") ?? AVSpeechSynthesisVoice.speechVoices().first!
@@ -45,13 +59,13 @@ class VoiceNarrationManager: NSObject, ObservableObject {
             return 
         }
         
-        // Prevent speaking the same pattern repeatedly
-        let patternDescription = generatePatternDescription(pattern)
-        guard patternDescription != lastSpokenPattern else { 
-            print("🔇 Pattern already spoken recently: \(patternDescription)")
+        // Smart repetition prevention with spatial awareness
+        guard shouldSpeakPattern(pattern) else { 
+            print("🔇 Pattern filtered by smart repetition prevention")
             return 
         }
         
+        let patternDescription = generatePatternDescription(pattern)
         print("🎤 Speaking pattern: \(patternDescription)")
         
         // Stop any current speech
@@ -63,14 +77,61 @@ class VoiceNarrationManager: NSObject, ObservableObject {
         
         // Speak the pattern
         synthesizer.speak(utterance)
-        lastSpokenPattern = patternDescription
         
-        // Set a timer to allow speaking again after minimum interval
-        speechTimer?.invalidate()
-        speechTimer = Timer.scheduledTimer(withTimeInterval: minimumIntervalBetweenSpeeches, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.lastSpokenPattern = ""
+        // Update tracking
+        updatePatternTracking(pattern)
+    }
+    
+    // MARK: - Smart Pattern Filtering
+    private func shouldSpeakPattern(_ pattern: DetectedPattern) -> Bool {
+        let patternKey = "\(pattern.type.rawValue)_\(Int(pattern.centerPoint.x))_\(Int(pattern.centerPoint.y))"
+        let now = Date()
+        
+        // Check if we've spoken this exact pattern recently
+        if let lastSpoken = spokenPatterns[patternKey],
+           now.timeIntervalSince(lastSpoken) < timeThreshold {
+            return false
+        }
+        
+        // Check spatial proximity to last spoken pattern
+        if let lastLocation = lastSpokenLocation {
+            let distance = sqrt(pow(pattern.centerPoint.x - lastLocation.x, 2) + 
+                              pow(pattern.centerPoint.y - lastLocation.y, 2))
+            if distance < spatialThreshold {
+                return false
             }
+        }
+        
+        // Check if we've spoken this pattern type recently anywhere
+        let patternTypeKey = pattern.type.rawValue
+        if let lastSpoken = spokenPatterns[patternTypeKey],
+           now.timeIntervalSince(lastSpoken) < timeThreshold {
+            return false
+        }
+        
+        return true
+    }
+    
+    private func updatePatternTracking(_ pattern: DetectedPattern) {
+        let patternKey = "\(pattern.type.rawValue)_\(Int(pattern.centerPoint.x))_\(Int(pattern.centerPoint.y))"
+        let patternTypeKey = pattern.type.rawValue
+        let now = Date()
+        
+        // Update tracking
+        spokenPatterns[patternKey] = now
+        spokenPatterns[patternTypeKey] = now
+        lastSpokenLocation = pattern.centerPoint
+        
+        // Clean up old entries to prevent memory buildup
+        cleanupOldEntries()
+    }
+    
+    private func cleanupOldEntries() {
+        let now = Date()
+        let cutoffTime = now.addingTimeInterval(-timeThreshold * 2)
+        
+        spokenPatterns = spokenPatterns.filter { _, date in
+            date > cutoffTime
         }
     }
     
@@ -148,11 +209,11 @@ class VoiceNarrationManager: NSObject, ObservableObject {
     
     private func configureUtterance(_ utterance: AVSpeechUtterance) {
         utterance.voice = voice
-        utterance.rate = speechRate
+        utterance.rate = speechRate * 0.7 // Slower, more natural pace
         utterance.volume = speechVolume
-        utterance.pitchMultiplier = 1.0
-        utterance.preUtteranceDelay = 0.1
-        utterance.postUtteranceDelay = 0.1
+        utterance.pitchMultiplier = 1.1 // Slightly higher pitch for more engaging tone
+        utterance.preUtteranceDelay = 0.2 // Slight pause before speaking
+        utterance.postUtteranceDelay = 0.3 // Pause after speaking
     }
     
     private func generatePatternDescription(_ pattern: DetectedPattern) -> String {
@@ -218,7 +279,33 @@ class VoiceNarrationManager: NSObject, ObservableObject {
     }
     
     private func generateDetailedExplanation(_ pattern: DetectedPattern) -> String {
-        return "Tap for more details."
+        return generateDetailedPatternDescription(pattern)
+    }
+    
+    private func generateDetailedPatternDescription(_ pattern: DetectedPattern) -> String {
+        let confidence = Int(pattern.confidence * 100)
+        let patternType = pattern.type
+        
+        switch patternType {
+        case .fibonacciSpiral:
+            return "This is a beautiful Fibonacci spiral, found in nature's most elegant designs. The spiral grows at the golden ratio of 1.618, creating perfect mathematical harmony. You can see this same pattern in nautilus shells and galaxy arms."
+        case .goldenRatio:
+            return "You've found the golden ratio! This divine proportion of 1.618 appears throughout nature and art. It's considered the most aesthetically pleasing ratio, found in everything from flower petals to architectural masterpieces."
+        case .fibonacciSequence:
+            return "A Fibonacci sequence pattern! Each number is the sum of the two before it: 1, 1, 2, 3, 5, 8, 13. This sequence appears in flower petal counts, pinecone spirals, and even the branching of trees."
+        case .phiGrid:
+            return "This is a phi grid pattern, based on the golden ratio. It creates perfect proportions that our eyes find naturally beautiful, used by artists and architects for centuries."
+        case .sunflowerSpiral:
+            return "A sunflower spiral! The seeds are arranged in perfect Fibonacci spirals, maximizing space efficiency. This mathematical pattern ensures every seed gets optimal sunlight and space."
+        case .pineconeSpiral:
+            return "Pinecone spiral detected! The scales follow Fibonacci spirals, creating the most efficient packing arrangement. Nature's engineering at its finest."
+        case .shellSpiral:
+            return "A shell spiral pattern! This logarithmic spiral grows at the golden ratio, creating the perfect balance of strength and beauty found in nautilus shells."
+        case .nautilusSpiral:
+            return "The classic nautilus spiral! This perfect logarithmic spiral grows at exactly the golden ratio, creating one of nature's most beautiful mathematical patterns."
+        case .leafArrangement:
+            return "Leaf arrangement following Fibonacci patterns! Plants use this mathematical sequence to ensure optimal sunlight exposure for each leaf, maximizing photosynthesis efficiency."
+        }
     }
     
 }

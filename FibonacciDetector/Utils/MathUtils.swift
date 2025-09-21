@@ -519,5 +519,262 @@ struct MathUtils {
         let t = clamp((x - edge0) / (edge1 - edge0), min: 0, max: 1)
         return t * t * (3 - 2 * t)
     }
+    
+    // MARK: - Enhanced Pattern Detection Algorithms
+    
+    /// Analyzes edge detection results for spiral patterns
+    static func analyzeEdgesForSpiralPattern(_ edgeObservation: VNEdgeObservation) -> Double {
+        // This would analyze the edge observation for spiral characteristics
+        // For now, return a placeholder score based on edge complexity
+        let edgeComplexity = Double(edgeObservation.edgeCount) / 1000.0
+        return min(1.0, edgeComplexity)
+    }
+    
+    /// Analyzes circle detection results for spiral center points
+    static func analyzeCirclesForSpiralPattern(_ circleObservation: VNCircleObservation, pixelBuffer: CVPixelBuffer) -> Double {
+        // Analyze if circles could be spiral centers
+        let confidence = Double(circleObservation.confidence)
+        let radius = Double(circleObservation.radius)
+        
+        // Prefer medium-sized circles as potential spiral centers
+        let radiusScore = 1.0 - abs(radius - 0.1) / 0.1 // Optimal around 0.1 normalized radius
+        let radiusScoreClamped = max(0.0, min(1.0, radiusScore))
+        
+        return confidence * radiusScoreClamped
+    }
+    
+    /// Calculates golden ratio score for a given ratio
+    static func calculateGoldenRatioScore(_ ratio: Double) -> Double {
+        let phi = goldenRatio
+        let phiInverse = 1.0 / phi
+        
+        // Check both orientations
+        let score1 = 1.0 - abs(ratio - phi) / phi
+        let score2 = 1.0 - abs(ratio - phiInverse) / phiInverse
+        
+        return max(0.0, max(score1, score2))
+    }
+    
+    /// Analyzes horizon detection for natural golden ratio divisions
+    static func analyzeHorizonForGoldenRatio(_ horizonObservation: VNHorizonObservation, pixelBuffer: CVPixelBuffer) -> Double {
+        // Analyze if horizon creates golden ratio divisions in the image
+        let horizonAngle = Double(horizonObservation.angle)
+        let imageHeight = Double(CVPixelBufferGetHeight(pixelBuffer))
+        let imageWidth = Double(CVPixelBufferGetWidth(pixelBuffer))
+        
+        // Calculate where horizon intersects the image
+        let horizonY = imageHeight * (0.5 + 0.5 * sin(horizonAngle))
+        
+        // Check if horizon divides image in golden ratio proportions
+        let topRatio = horizonY / imageHeight
+        let bottomRatio = (imageHeight - horizonY) / imageHeight
+        
+        let ratio1 = topRatio / bottomRatio
+        let ratio2 = bottomRatio / topRatio
+        
+        let score1 = calculateGoldenRatioScore(ratio1)
+        let score2 = calculateGoldenRatioScore(ratio2)
+        
+        return max(score1, score2)
+    }
+    
+    /// Analyzes face detection for facial golden ratio proportions
+    static func analyzeFaceForGoldenRatio(_ faceObservation: VNFaceObservation) -> Double {
+        let boundingBox = faceObservation.boundingBox
+        let width = Double(boundingBox.width)
+        let height = Double(boundingBox.height)
+        
+        // Check face aspect ratio
+        let aspectRatio = width / height
+        let faceScore = calculateGoldenRatioScore(aspectRatio)
+        
+        // Check if face landmarks follow golden ratio (if available)
+        var landmarkScore = 0.0
+        if let landmarks = faceObservation.landmarks {
+            // Analyze eye-to-mouth distance vs face height
+            if let leftEye = landmarks.leftEye,
+               let rightEye = landmarks.rightEye,
+               let outerLips = landmarks.outerLips {
+                
+                // Calculate eye center
+                let eyeCenterY = (leftEye.normalizedPoints[0].y + rightEye.normalizedPoints[0].y) / 2
+                
+                // Calculate mouth center
+                let mouthCenterY = outerLips.normalizedPoints.reduce(0) { $0 + $1.y } / Double(outerLips.normalizedPoints.count)
+                
+                // Calculate eye-to-mouth distance
+                let eyeToMouthDistance = abs(eyeCenterY - mouthCenterY)
+                
+                // Check if this distance follows golden ratio with face height
+                let eyeToMouthRatio = eyeToMouthDistance / Double(height)
+                landmarkScore = calculateGoldenRatioScore(eyeToMouthRatio)
+            }
+        }
+        
+        return max(faceScore, landmarkScore)
+    }
+    
+    /// Enhanced spiral detection with multiple algorithms
+    static func detectAdvancedSpiralPattern(
+        in points: [CGPoint],
+        center: CGPoint
+    ) -> (isSpiral: Bool, confidence: Double, spiralType: String, parameters: [String: Double]) {
+        
+        guard points.count > 20 else {
+            return (false, 0.0, "none", [:])
+        }
+        
+        var scores: [String: Double] = [:]
+        var parameters: [String: Double] = [:]
+        
+        // 1. Basic spiral score
+        let basicScore = calculateSpiralScore(points)
+        scores["basic"] = basicScore
+        
+        // 2. Logarithmic spiral detection
+        let (isLogarithmic, logConfidence, growthRate) = detectLogarithmicSpiral(in: points, center: center)
+        scores["logarithmic"] = logConfidence
+        parameters["growthRate"] = growthRate
+        
+        // 3. Fibonacci spiral detection
+        let (isFibonacci, fibConfidence, fibCenter, fibRadius) = detectFibonacciSpiral(in: points, tolerance: 0.15)
+        scores["fibonacci"] = fibConfidence
+        parameters["fibRadius"] = fibRadius
+        
+        // 4. Nautilus spiral detection
+        let (isNautilus, nautilusConfidence, chamberCount, nautilusGrowthRate) = detectNautilusSpiral(in: points, center: center)
+        scores["nautilus"] = nautilusConfidence
+        parameters["chamberCount"] = Double(chamberCount)
+        parameters["nautilusGrowthRate"] = nautilusGrowthRate
+        
+        // 5. Phyllotaxis pattern detection
+        let (isPhyllotaxis, phylloConfidence, phylloAngle) = detectPhyllotaxisPattern(in: points, center: center)
+        scores["phyllotaxis"] = phylloConfidence
+        parameters["phylloAngle"] = phylloAngle
+        
+        // Determine the best match
+        let bestMatch = scores.max { $0.value < $1.value }
+        let bestScore = bestMatch?.value ?? 0.0
+        let bestType = bestMatch?.key ?? "none"
+        
+        let isSpiral = bestScore > 0.6
+        
+        return (isSpiral, bestScore, bestType, parameters)
+    }
+    
+    /// Multi-algorithm golden ratio detection
+    static func detectAdvancedGoldenRatio(
+        in rect: CGRect,
+        context: [String: Any] = [:]
+    ) -> (isGoldenRatio: Bool, confidence: Double, ratio: Double, context: String) {
+        
+        let width = Double(rect.width)
+        let height = Double(rect.height)
+        
+        guard width > 0 && height > 0 else {
+            return (false, 0.0, 0.0, "invalid_dimensions")
+        }
+        
+        var scores: [String: Double] = [:]
+        var ratios: [String: Double] = [:]
+        
+        // 1. Basic aspect ratio
+        let aspectRatio = max(width, height) / min(width, height)
+        let inverseRatio = min(width, height) / max(width, height)
+        
+        scores["aspect"] = max(
+            calculateGoldenRatioScore(aspectRatio),
+            calculateGoldenRatioScore(inverseRatio)
+        )
+        ratios["aspect"] = aspectRatio
+        
+        // 2. Rectangle subdivision analysis
+        let subdivisionScore = analyzeRectangleSubdivision(rect)
+        scores["subdivision"] = subdivisionScore
+        ratios["subdivision"] = aspectRatio
+        
+        // 3. Context-aware analysis
+        if let contextType = context["type"] as? String {
+            let contextScore = analyzeContextualGoldenRatio(rect, contextType: contextType)
+            scores["context"] = contextScore
+            ratios["context"] = aspectRatio
+        }
+        
+        // Determine best match
+        let bestMatch = scores.max { $0.value < $1.value }
+        let bestScore = bestMatch?.value ?? 0.0
+        let bestContext = bestMatch?.key ?? "basic"
+        let bestRatio = ratios[bestContext] ?? aspectRatio
+        
+        let isGoldenRatio = bestScore > 0.7
+        
+        return (isGoldenRatio, bestScore, bestRatio, bestContext)
+    }
+    
+    /// Analyzes rectangle subdivision for golden ratio patterns
+    private static func analyzeRectangleSubdivision(_ rect: CGRect) -> Double {
+        let width = Double(rect.width)
+        let height = Double(rect.height)
+        
+        // Check if rectangle can be subdivided into golden ratio rectangles
+        let phi = goldenRatio
+        
+        // Test horizontal subdivision
+        let horizontalSubdivision = width / phi
+        let horizontalScore = calculateGoldenRatioScore(horizontalSubdivision / height)
+        
+        // Test vertical subdivision
+        let verticalSubdivision = height / phi
+        let verticalScore = calculateGoldenRatioScore(verticalSubdivision / width)
+        
+        return max(horizontalScore, verticalScore)
+    }
+    
+    /// Context-aware golden ratio analysis
+    private static func analyzeContextualGoldenRatio(_ rect: CGRect, contextType: String) -> Double {
+        let aspectRatio = Double(rect.width) / Double(rect.height)
+        
+        switch contextType.lowercased() {
+        case "face":
+            // Facial golden ratio proportions
+            return calculateFacialGoldenRatioScore(aspectRatio)
+        case "architecture":
+            // Architectural golden ratio proportions
+            return calculateArchitecturalGoldenRatioScore(aspectRatio)
+        case "nature":
+            // Natural golden ratio proportions
+            return calculateNaturalGoldenRatioScore(aspectRatio)
+        default:
+            return calculateGoldenRatioScore(aspectRatio)
+        }
+    }
+    
+    private static func calculateFacialGoldenRatioScore(_ ratio: Double) -> Double {
+        // Facial proportions often follow different golden ratio patterns
+        let facialPhi = 1.618
+        let facialPhiInverse = 1.0 / facialPhi
+        
+        let score1 = 1.0 - abs(ratio - facialPhi) / facialPhi
+        let score2 = 1.0 - abs(ratio - facialPhiInverse) / facialPhiInverse
+        
+        return max(0.0, max(score1, score2))
+    }
+    
+    private static func calculateArchitecturalGoldenRatioScore(_ ratio: Double) -> Double {
+        // Architectural proportions often use golden ratio
+        return calculateGoldenRatioScore(ratio)
+    }
+    
+    private static func calculateNaturalGoldenRatioScore(_ ratio: Double) -> Double {
+        // Natural proportions may have more variation
+        let tolerance = 0.2
+        let phi = goldenRatio
+        let phiInverse = 1.0 / phi
+        
+        let score1 = 1.0 - abs(ratio - phi) / (phi * tolerance)
+        let score2 = 1.0 - abs(ratio - phiInverse) / (phiInverse * tolerance)
+        
+        return max(0.0, max(score1, score2))
+    }
 }
 

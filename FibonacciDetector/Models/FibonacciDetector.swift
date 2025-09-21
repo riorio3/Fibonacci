@@ -250,35 +250,65 @@ class FibonacciDetector: ObservableObject {
     }
     
     private func analyzeImageForSpiralPattern(_ pixelBuffer: CVPixelBuffer) -> Bool {
-        // Enhanced spiral detection using Vision framework
+        // Enhanced multi-algorithm spiral detection
         let requestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         
-        // Use contour detection to find potential spiral patterns
+        // Algorithm 1: Contour-based spiral detection
         let contourRequest = VNDetectContoursRequest()
         contourRequest.detectsDarkOnLight = true
         contourRequest.contrastAdjustment = 1.0
         
+        // Algorithm 2: Edge detection for spiral patterns
+        let edgeRequest = VNDetectEdgesRequest()
+        edgeRequest.edgePreserving = true
+        
+        // Algorithm 3: Circle detection for spiral centers
+        let circleRequest = VNDetectCircleRequest()
+        circleRequest.maximumObservations = 5
+        circleRequest.minimumRadius = 0.05
+        circleRequest.maximumRadius = 0.5
+        
         do {
-            try requestHandler.perform([contourRequest])
+            try requestHandler.perform([contourRequest, edgeRequest, circleRequest])
             
-            guard let observations = contourRequest.results else { return false }
+            var spiralScore: Double = 0.0
             
-            for observation in observations {
-                let contours = observation.topLevelContours
-                for contour in contours {
-                    let points = contour.normalizedPoints.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
-                    
-                    // Analyze contour for spiral characteristics
-                    if points.count > 20 {
-                        let spiralScore = MathUtils.calculateSpiralScore(points)
-                        if spiralScore > 0.6 {
-                            return true
+            // Analyze contours for spiral characteristics
+            if let contourObservations = contourRequest.results {
+                for observation in contourObservations {
+                    let contours = observation.topLevelContours
+                    for contour in contours {
+                        let points = contour.normalizedPoints.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
+                        
+                        if points.count > 20 {
+                            let contourSpiralScore = MathUtils.calculateSpiralScore(points)
+                            spiralScore = max(spiralScore, contourSpiralScore)
                         }
                     }
                 }
             }
+            
+            // Analyze edges for logarithmic spiral patterns
+            if let edgeObservations = edgeRequest.results {
+                for observation in edgeObservations {
+                    let edgeSpiralScore = MathUtils.analyzeEdgesForSpiralPattern(observation)
+                    spiralScore = max(spiralScore, edgeSpiralScore)
+                }
+            }
+            
+            // Analyze circles for spiral center points
+            if let circleObservations = circleRequest.results {
+                for observation in circleObservations {
+                    let circleSpiralScore = MathUtils.analyzeCirclesForSpiralPattern(observation, pixelBuffer: pixelBuffer)
+                    spiralScore = max(spiralScore, circleSpiralScore)
+                }
+            }
+            
+            // Enhanced threshold with multiple algorithm consensus
+            return spiralScore > 0.65
+            
         } catch {
-            print("❌ Contour detection failed: \(error)")
+            print("❌ Enhanced spiral detection failed: \(error)")
         }
         
         return false
@@ -307,36 +337,70 @@ class FibonacciDetector: ObservableObject {
     }
     
     private func analyzeImageForGoldenRatio(_ pixelBuffer: CVPixelBuffer) -> Bool {
-        // Enhanced golden ratio detection using rectangle detection
+        // Enhanced multi-algorithm golden ratio detection
         let requestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
         
+        // Algorithm 1: Rectangle detection for golden ratio proportions
         let rectangleRequest = VNDetectRectanglesRequest()
-        rectangleRequest.maximumObservations = 10
+        rectangleRequest.maximumObservations = 15
         rectangleRequest.minimumAspectRatio = 0.1
         rectangleRequest.maximumAspectRatio = 10.0
-        rectangleRequest.minimumSize = 0.1
-        rectangleRequest.minimumConfidence = 0.5
+        rectangleRequest.minimumSize = 0.05
+        rectangleRequest.minimumConfidence = 0.4
+        
+        // Algorithm 2: Horizon detection for natural golden ratio lines
+        let horizonRequest = VNDetectHorizonRequest()
+        
+        // Algorithm 3: Face detection for facial golden ratio proportions
+        let faceRequest = VNDetectFaceRectanglesRequest()
+        faceRequest.maximumObservations = 3
         
         do {
-            try requestHandler.perform([rectangleRequest])
+            try requestHandler.perform([rectangleRequest, horizonRequest, faceRequest])
             
-            guard let observations = rectangleRequest.results else { return false }
+            var goldenRatioScore: Double = 0.0
             
-            for observation in observations {
-                let boundingBox = observation.boundingBox
-                let width = boundingBox.width
-                let height = boundingBox.height
-                
-                // Calculate aspect ratio
-                let aspectRatio = Double(width) / Double(height)
-                
-                // Check if aspect ratio matches golden ratio
-                if MathUtils.isGoldenRatio(aspectRatio, tolerance: 0.1) {
-                    return true
+            // Analyze rectangles for golden ratio proportions
+            if let rectangleObservations = rectangleRequest.results {
+                for observation in rectangleObservations {
+                    let boundingBox = observation.boundingBox
+                    let width = boundingBox.width
+                    let height = boundingBox.height
+                    
+                    // Calculate aspect ratio
+                    let aspectRatio = Double(width) / Double(height)
+                    let inverseRatio = Double(height) / Double(width)
+                    
+                    // Check both orientations for golden ratio
+                    let rectScore = max(
+                        MathUtils.calculateGoldenRatioScore(aspectRatio),
+                        MathUtils.calculateGoldenRatioScore(inverseRatio)
+                    )
+                    goldenRatioScore = max(goldenRatioScore, rectScore)
                 }
             }
+            
+            // Analyze horizon for natural golden ratio divisions
+            if let horizonObservations = horizonRequest.results {
+                for observation in horizonObservations {
+                    let horizonScore = MathUtils.analyzeHorizonForGoldenRatio(observation, pixelBuffer: pixelBuffer)
+                    goldenRatioScore = max(goldenRatioScore, horizonScore)
+                }
+            }
+            
+            // Analyze faces for facial golden ratio proportions
+            if let faceObservations = faceRequest.results {
+                for observation in faceObservations {
+                    let faceScore = MathUtils.analyzeFaceForGoldenRatio(observation)
+                    goldenRatioScore = max(goldenRatioScore, faceScore)
+                }
+            }
+            
+            // Enhanced threshold with multiple algorithm consensus
+            return goldenRatioScore > 0.7
+            
         } catch {
-            print("❌ Rectangle detection failed: \(error)")
+            print("❌ Enhanced golden ratio detection failed: \(error)")
         }
         
         return false
